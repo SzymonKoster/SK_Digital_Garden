@@ -1,146 +1,52 @@
-import React, { useState, useMemo } from 'react';
+/**
+ * Digital Garden Portfolio Application
+ * 
+ * Purpose: A dual-mode portfolio website showcasing technical skills, projects, and certifications.
+ *          Features a public-facing portfolio view and a private admin workspace for content management.
+ * 
+ * Key Features:
+ *   - Public View: Clean portfolio with projects, tech stack, and certifications
+ *   - Admin Mode: Password-protected workspace for managing skills and visibility
+ *   - Tech Radar: Categorizes technologies by status (active, learning, assess, archive)
+ *   - Visibility Control: Toggle items between public/private display
+ *   - Configuration Panel: JSON editor for data management
+ *   - Responsive Design: Tailored for desktop and mobile viewing
+ * 
+ * Architecture:
+ *   - Single-page React application with TypeScript
+ *   - State management using React hooks (useState, useMemo)
+ *   - Styled with Tailwind CSS for utility-first design
+ *   - Icons from Lucide React library
+ * 
+ * Data Model:
+ *   - TechItem: Individual technology/skill with category, status, visibility
+ *   - Project: Portfolio project with description, tech stack, images
+ *   - Certificate: Professional certifications with issuer and date
+ * 
+ * Security Note: 
+ *   Admin password is hardcoded (ADMIN_PASSWORD constant) - suitable for static sites
+ *   but should be replaced with proper authentication for production use.
+ */
+
+import { useState, useMemo } from 'react';
 import {
-  Brain, Database, Code, Wrench, Layers, Search, Save,
-  Trash2, Archive, Cpu, Settings,
+  Wrench, Layers, Search, Save,
+  Trash2, Archive, Settings,
   Briefcase, Eye, EyeOff, Lock, Globe,
-  Sprout, Leaf, Flower2, Mountain, Calendar, X,
-  Image as ImageIcon, ArrowRight, Award, Download,
+  Sprout, Leaf, Flower2, Mountain,
+  ArrowRight, Award, Download,
   Linkedin, Github, Mail, Key,
-  Cloud, Terminal, ShieldCheck, Users
+  Cloud, Terminal, Database
 } from 'lucide-react';
 
-
-
-// --- KONFIGURACJA BEZPIECZEŃSTWA ---
-const ADMIN_PASSWORD = "admin123";
-
-// --- Typy Danych ---
-
-type Status = 'active' | 'learning' | 'assess' | 'archive';
-type Category = 'languages' | 'data-engineering' | 'devops' | 'tools' | 'soft-skills' | 'business';
-type Visibility = 'public' | 'private';
-
-interface TechItem {
-  id: string;
-  name: string;
-  category: Category;
-  status: Status;
-  visibility: Visibility;
-  description: string;
-  tags: string[];
-}
-
-interface Project {
-  id: string;
-  title: string;
-  shortDescription: string;
-  fullDescription: string;
-  date: string;
-  techStack: string[];
-  imageCount: number;
-}
-
-interface Certificate {
-  id: string;
-  name: string;
-  issuer: string;
-  date: string;
-  url?: string;
-  iconType: 'azure' | 'gcp' | 'generic';
-}
-
-// --- Dane Początkowe (ZAKTUALIZOWANE Z CV) ---
-
-const INITIAL_DATA: TechItem[] = [
-  // --- LANGUAGES (Core & Data Processing) ---
-  { id: '1', name: 'Python (Advanced)', category: 'languages', status: 'active', visibility: 'public', description: 'Backend, Data Eng, AI. Główny język.', tags: ['core', 'advanced'] },
-  { id: '2', name: 'SQL (Spark/T-SQL)', category: 'languages', status: 'active', visibility: 'public', description: 'Zaawansowane zapytania, optymalizacja.', tags: ['core', 'data'] },
-  { id: '3', name: 'Bash', category: 'languages', status: 'active', visibility: 'public', description: 'Skrypty systemowe i automatyzacja.', tags: ['devops'] },
-
-  // --- DATA ENGINEERING (Platform & Cloud) ---
-  { id: '4', name: 'Databricks', category: 'data-engineering', status: 'active', visibility: 'public', description: 'Lakehouse, Asset Bundles (DABs).', tags: ['platform', 'big-data'] },
-  { id: '5', name: 'PySpark', category: 'data-engineering', status: 'active', visibility: 'public', description: 'Przetwarzanie rozproszone dużej skali.', tags: ['big-data'] },
-  { id: '6', name: 'Delta Lake', category: 'data-engineering', status: 'active', visibility: 'public', description: 'Format tabelaryczny, ACID, Time Travel.', tags: ['storage'] },
-  { id: '7', name: 'Unity Catalog', category: 'data-engineering', status: 'active', visibility: 'public', description: 'Governance i zarządzanie danymi.', tags: ['governance'] },
-  { id: '8', name: 'Delta Live Tables', category: 'data-engineering', status: 'active', visibility: 'public', description: 'Deklaratywne pipeliny ETL.', tags: ['etl'] },
-  { id: '9', name: 'Pandas', category: 'data-engineering', status: 'active', visibility: 'public', description: 'Analiza danych in-memory.', tags: ['analysis'] },
-
-  // --- CLOUD & DEVOPS (Platform, MLOps) ---
-  { id: '10', name: 'Azure (ADF, ADLS)', category: 'devops', status: 'active', visibility: 'public', description: 'Data Factory, Storage Gen2, Machine Learning.', tags: ['cloud', 'azure'] },
-  { id: '11', name: 'GCP (Vertex AI)', category: 'devops', status: 'active', visibility: 'public', description: 'Platforma AI i BigQuery.', tags: ['cloud', 'gcp'] },
-  { id: '12', name: 'Terraform', category: 'devops', status: 'active', visibility: 'public', description: 'Infrastructure as Code (IaC).', tags: ['iac'] },
-  { id: '13', name: 'Docker', category: 'devops', status: 'active', visibility: 'public', description: 'Konteneryzacja aplikacji.', tags: ['infra'] },
-  { id: '14', name: 'GitHub Actions', category: 'devops', status: 'active', visibility: 'public', description: 'CI/CD pipelines.', tags: ['cicd'] },
-  { id: '15', name: 'Azure DevOps', category: 'devops', status: 'active', visibility: 'public', description: 'Zarządzanie repozytoriami i pipelines.', tags: ['cicd'] },
-  { id: '16', name: 'MLflow', category: 'data-engineering', status: 'active', visibility: 'public', description: 'Zarządzanie cyklem życia modeli ML.', tags: ['mlops'] },
-
-  // --- TOOLS (Quality & Security) ---
-  { id: '17', name: 'Code Quality Stack', category: 'tools', status: 'active', visibility: 'public', description: 'Ruff, Mypy, SonarQube.', tags: ['quality'] },
-  { id: '18', name: 'Security', category: 'tools', status: 'active', visibility: 'public', description: 'Snyk, OAuth2 implementation.', tags: ['security'] },
-
-  // --- BUSINESS & MANAGEMENT ---
-  { id: '19', name: 'Agile / Scrum', category: 'business', status: 'active', visibility: 'public', description: 'Metodyki zwinne.', tags: ['management'] },
-  { id: '20', name: 'Jira / Confluence', category: 'business', status: 'active', visibility: 'public', description: 'Zarządzanie zadaniami i dokumentacją.', tags: ['tools'] },
-
-  // --- OTHER / LEARNING ---
-  { id: '21', name: 'AI Agents', category: 'data-engineering', status: 'learning', visibility: 'public', description: 'Autonomiczne systemy decyzyjne.', tags: ['future'] },
-  { id: '22', name: 'Polski / Angielski', category: 'soft-skills', status: 'active', visibility: 'public', description: 'Native / Full Business Proficiency.', tags: ['lang'] },
-];
-
-const INITIAL_PROJECTS: Project[] = [
-  {
-    id: 'p1',
-    title: 'Autonomous Data Pipeline',
-    shortDescription: 'Samodzielny orkiestrator ETL oparty na Azure Data Factory i Pythonie.',
-    fullDescription: 'Zaprojektowałem i wdrożyłem w pełni zautomatyzowany pipeline danych przetwarzający 5TB danych dziennie. System wykorzystuje Azure Functions do triggerowania procesów oraz PySpark na Databricks do transformacji. Zaimplementowałem autorski moduł Quality Assurance, który automatycznie wykrywa anomalie w danych przed załadowaniem do hurtowni.',
-    date: 'Sierpień 2024',
-    techStack: ['Azure', 'Python', 'Databricks', 'SQL'],
-    imageCount: 2
-  },
-  {
-    id: 'p2',
-    title: 'Market Analysis AI Agent',
-    shortDescription: 'Agent AI analizujący trendy rynkowe w czasie rzeczywistym.',
-    fullDescription: 'Prototyp startupowy wykorzystujący model LLM (GPT-4) oraz bazę wektorową (Pinecone) do analizy sentymentu z newsów finansowych. Agent potrafi samodzielnie agregować źródła, oceniać ich wiarygodność i generować raporty inwestycyjne. Projekt stworzony w ramach researchu nad autonomią w systemach decyzyjnych.',
-    date: 'Styczeń 2025',
-    techStack: ['OpenAI API', 'LangChain', 'Pinecone', 'FastAPI'],
-    imageCount: 3
-  },
-  {
-    id: 'p3',
-    title: 'Smart Home IoT Hub',
-    shortDescription: 'Prywatny hub do zarządzania inteligentnym domem z lokalnym ML.',
-    fullDescription: 'System integrujący czujniki Zigbee z dashboardem napisanym w React. Całość działa na klastrze Raspberry Pi (k3s). Wdrożyłem prosty model ML (TensorFlow Lite) do predykcji zużycia energii i optymalizacji ogrzewania w oparciu o prognozę pogody i obecność domowników.',
-    date: 'Maj 2024',
-    techStack: ['IoT', 'Docker', 'K3s', 'React', 'TensorFlow'],
-    imageCount: 1
-  }
-];
-
-const INITIAL_CERTS: Certificate[] = [
-  { id: 'c1', name: 'Azure Data Engineer Associate (DP-203)', issuer: 'Microsoft', date: '2024', iconType: 'azure' },
-  { id: 'c2', name: 'Professional Cloud Architect', issuer: 'Google Cloud', date: '2023', iconType: 'gcp' },
-  { id: 'c3', name: 'TensorFlow Developer Certificate', issuer: 'Google', date: '2022', iconType: 'generic' },
-];
-
-// --- Komponenty UI ---
-
-const Card = ({ children, className = "", onClick }: { children: React.ReactNode, className?: string, onClick?: () => void }) => (
-  <div
-    onClick={onClick}
-    className={`bg-stone-900 border border-stone-700/80 rounded-xl shadow-md hover:shadow-amber-900/10 hover:border-amber-700/50 transition-all duration-200 ${onClick ? 'cursor-pointer' : ''} ${className}`}
-  >
-    {children}
-  </div>
-);
-
-const VisibilityIcon = ({ visibility }: { visibility: Visibility }) => (
-  visibility === 'public'
-    ? <span className="text-emerald-600/80 hover:text-emerald-500 transition-colors" title="Widoczny Publicznie"><Globe size={14} /></span>
-    : <span className="text-stone-600 hover:text-stone-500 transition-colors" title="Prywatny / Ukryty"><Lock size={14} /></span>
-);
-
-// --- Główna Aplikacja ---
+// Import extracted modules
+import type { TechItem, Project, Status, Category } from './types';
+import { INITIAL_DATA, INITIAL_PROJECTS, INITIAL_CERTS, ADMIN_PASSWORD } from './data/initialData';
+import { Card } from './components/Card';
+import { VisibilityIcon } from './components/VisibilityIcon';
+import { LoginModal } from './components/LoginModal';
+import { ProjectModal } from './components/ProjectModal';
+import { getIconForCategory } from './utils/icons';
 
 export default function DigitalMindHub() {
   const [items, setItems] = useState<TechItem[]>(INITIAL_DATA);
@@ -201,109 +107,6 @@ export default function DigitalMindHub() {
     link.click();
     document.body.removeChild(link);
   };
-
-  // --- MODALE ---
-
-  const LoginModal = () => {
-    const [password, setPassword] = useState("");
-
-    return (
-      <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
-        <div className="bg-stone-900 border border-stone-700 p-6 rounded-xl shadow-2xl w-full max-w-sm">
-          <div className="flex justify-center mb-4 text-amber-500">
-            <Lock size={32} />
-          </div>
-          <h3 className="text-xl font-bold text-center text-stone-200 mb-2">Dostęp do Warsztatu</h3>
-          <p className="text-xs text-center text-stone-500 mb-6">Podaj hasło administratora, aby edytować.</p>
-
-          <input
-            type="password"
-            autoFocus
-            className="w-full bg-black border border-stone-700 rounded-lg px-4 py-2 text-stone-200 mb-4 focus:border-amber-500 outline-none"
-            placeholder="Hasło..."
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleLoginAttempt(password)}
-          />
-
-          <div className="flex gap-2">
-            <button onClick={() => setShowLoginModal(false)} className="flex-1 py-2 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-400 font-medium transition-colors text-sm">
-              Anuluj
-            </button>
-            <button onClick={() => handleLoginAttempt(password)} className="flex-1 py-2 rounded-lg bg-amber-700 hover:bg-amber-600 text-amber-100 font-medium transition-colors text-sm">
-              Wejdź
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const ProjectModal = ({ project, onClose }: { project: Project, onClose: () => void }) => (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={onClose}>
-      <div
-        className="bg-[#0c0a09] border border-stone-700 w-full max-w-3xl max-h-[90vh] overflow-auto rounded-2xl shadow-2xl shadow-amber-900/20"
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="flex justify-between items-start p-6 border-b border-stone-800 sticky top-0 bg-[#0c0a09]/95 backdrop-blur z-10">
-          <div>
-            <div className="flex items-center gap-3 text-amber-500 mb-2">
-              <Briefcase size={18} />
-              <span className="text-xs font-bold uppercase tracking-widest">Project Details</span>
-            </div>
-            <h2 className="text-2xl font-bold text-stone-100">{project.title}</h2>
-          </div>
-          <button onClick={onClose} className="p-2 bg-stone-900 rounded-full text-stone-400 hover:text-stone-100 hover:bg-stone-800 transition-colors">
-            <X size={20} />
-          </button>
-        </div>
-
-        <div className="p-6 space-y-8">
-          <div className="flex flex-wrap gap-4 items-center justify-between bg-stone-900/50 p-4 rounded-xl border border-stone-800">
-            <div className="flex items-center gap-2 text-stone-400 text-sm">
-              <Calendar size={16} className="text-amber-600" />
-              <span>Zrealizowano: <strong className="text-stone-200">{project.date}</strong></span>
-            </div>
-            <div className="flex gap-2 flex-wrap justify-end">
-              {project.techStack.map(tech => (
-                <span key={tech} className="px-2 py-1 bg-stone-950 border border-stone-700 rounded text-xs text-emerald-400 font-mono">
-                  {tech}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <div className="prose prose-invert prose-stone max-w-none">
-            <h3 className="text-lg font-bold text-stone-200 mb-3">O Projekcie</h3>
-            <p className="text-stone-400 leading-relaxed whitespace-pre-line">
-              {project.fullDescription}
-            </p>
-          </div>
-
-          <div>
-            <h3 className="text-lg font-bold text-stone-200 mb-4 flex items-center gap-2">
-              <ImageIcon size={18} className="text-stone-500" />
-              Galeria
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {Array.from({ length: project.imageCount }).map((_, idx) => (
-                <div key={idx} className="aspect-video bg-stone-900 border border-stone-800 rounded-xl flex flex-col items-center justify-center text-stone-600 gap-2 group hover:border-stone-600 transition-colors cursor-default">
-                  <ImageIcon size={32} className="opacity-50 group-hover:scale-110 transition-transform" />
-                  <span className="text-xs font-mono">Zdjęcie z projektu #{idx + 1}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="p-6 border-t border-stone-800 bg-stone-950">
-          <button onClick={onClose} className="w-full py-3 rounded-xl bg-stone-900 hover:bg-stone-800 text-stone-300 font-bold text-sm transition-colors border border-stone-800">
-            Zamknij
-          </button>
-        </div>
-      </div>
-    </div>
-  );
 
   // --- WIDOKI GŁÓWNE ---
 
@@ -588,7 +391,7 @@ export default function DigitalMindHub() {
   return (
     <div className="min-h-screen bg-[#0c0a09] bg-[radial-gradient(circle_at_top,_var(--tw-gradient-stops))] from-stone-900 via-[#0c0a09] to-black text-stone-300 font-sans flex flex-col selection:bg-amber-900/30 selection:text-amber-100 relative">
 
-      {showLoginModal && <LoginModal />}
+      {showLoginModal && <LoginModal onLogin={handleLoginAttempt} onClose={() => setShowLoginModal(false)} />}
 
       {/* Header */}
       <header className="border-b border-stone-800 bg-[#0c0a09]/80 backdrop-blur-xl sticky top-0 z-20">
@@ -693,11 +496,10 @@ export default function DigitalMindHub() {
         <div className="flex-1 min-h-0 relative scroll-smooth">
           {!isAdmin ? (
             <PublicView />
+          ) : activeTab === 'radar' ? (
+            <PrivateWorkspace />
           ) : (
-            <>
-              {activeTab === 'radar' && <PrivateWorkspace />}
-              {activeTab === 'config' && <ConfigPanel />}
-            </>
+            <ConfigPanel />
           )}
         </div>
 
@@ -717,16 +519,4 @@ export default function DigitalMindHub() {
       )}
     </div>
   );
-}
-
-function getIconForCategory(category: Category) {
-  switch (category) {
-    case 'languages': return <Code size={16} />;
-    case 'data-engineering': return <Database size={16} />;
-    case 'devops': return <Cpu size={16} />;
-    case 'tools': return <ShieldCheck size={16} />;
-    case 'soft-skills': return <Brain size={16} />;
-    case 'business': return <Users size={16} />;
-    default: return <Layers size={16} />;
-  }
 }

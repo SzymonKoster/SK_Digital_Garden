@@ -1,3 +1,17 @@
+/**
+ * ESLint Configuration
+ * 
+ * Purpose: Defines linting rules for code quality and consistency across the project.
+ * 
+ * Configuration:
+ *   - JavaScript/TypeScript linting with recommended rules
+ *   - React Hooks plugin for hook usage validation
+ *   - React Refresh plugin for Fast Refresh compatibility
+ *   - Ignores the 'dist' directory (build output)
+ * 
+ * Usage: Run 'npm run lint' to check code quality
+ */
+
 import js from '@eslint/js'
 import globals from 'globals'
 import reactHooks from 'eslint-plugin-react-hooks'
